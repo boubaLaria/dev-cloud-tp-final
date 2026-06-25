@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tracker-front
+  namespace: app
+  labels:
+    app: tracker-front
+    team: greenlogistics
+    env: production
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: tracker-front
+  template:
+    metadata:
+      labels:
+        app: tracker-front
+        team: greenlogistics
+        env: production
+    spec:
+      containers:
+        - name: tracker-front
+          image: ghcr.io/OWNER/greenlogistics/tracker-front:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3002
+          env:
+            - name: PORT
+              value: "3002"
+            - name: PARCEL_API_URL
+              value: "http://parcel-api.app.svc.cluster.local:3000"
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "200m"
+              memory: "128Mi"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3002
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3002
+            initialDelaySeconds: 20
+            periodSeconds: 15

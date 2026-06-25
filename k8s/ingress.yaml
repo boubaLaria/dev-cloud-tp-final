@@ -1,0 +1,44 @@
+---
+# Require: kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/kind/deploy.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: greenlogistics
+  namespace: app
+  annotations:
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: greenlogistics.local
+      http:
+        paths:
+          - path: /api/parcels(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: parcel-api
+                port:
+                  number: 3000
+          - path: /api/positions(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: gps-ingestor
+                port:
+                  number: 3001
+          - path: /track(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: tracker-front
+                port:
+                  number: 3002
+          - path: /()(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: tracker-front
+                port:
+                  number: 3002

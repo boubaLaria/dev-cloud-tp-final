@@ -1,0 +1,87 @@
+# Argo Rollouts — déploiement canary sur parcel-api
+# Remplace le Deployment standard après l'installation d'Argo Rollouts
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: parcel-api
+  namespace: app
+  labels:
+    app: parcel-api
+    team: greenlogistics
+    env: production
+spec:
+  replicas: 4
+  selector:
+    matchLabels:
+      app: parcel-api
+  template:
+    metadata:
+      labels:
+        app: parcel-api
+        team: greenlogistics
+        env: production
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "3000"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: parcel-api-sa
+      containers:
+        - name: parcel-api
+          image: ghcr.io/OWNER/greenlogistics/parcel-api:latest
+          ports:
+            - containerPort: 3000
+          env:
+            - name: PORT
+              value: "3000"
+            - name: NODE_ENV
+              value: production
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: api-secret
+                  key: DATABASE_URL
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 10
+  strategy:
+    canary:
+      steps:
+        - setWeight: 20
+        - pause: { duration: 2m }
+        - setWeight: 50
+        - pause: { duration: 2m }
+        - setWeight: 100
+      analysis:
+        templates:
+          - templateName: success-rate
+        startingStep: 1
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: success-rate
+  namespace: app
+spec:
+  metrics:
+    - name: success-rate
+      interval: 30s
+      successCondition: result[0] >= 0.99
+      failureLimit: 3
+      provider:
+        prometheus:
+          address: http://kps-prometheus.monitoring.svc.cluster.local:9090
+          query: |
+            sum(rate(http_requests_total{job="parcel-api",status_code!~"5.."}[2m]))
+            /
+            sum(rate(http_requests_total{job="parcel-api"}[2m]))

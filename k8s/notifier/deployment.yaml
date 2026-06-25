@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notifier
+  namespace: app
+  labels:
+    app: notifier
+    team: greenlogistics
+    env: production
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: notifier
+  template:
+    metadata:
+      labels:
+        app: notifier
+        team: greenlogistics
+        env: production
+    spec:
+      containers:
+        - name: notifier
+          image: ghcr.io/OWNER/greenlogistics/notifier:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3003
+          env:
+            - name: REDPANDA_BROKERS
+              value: "redpanda.messaging.svc.cluster.local:9092"
+            - name: TOPIC_GPS_POSITIONS
+              value: "gps.positions"
+            - name: TOPIC_DLQ
+              value: "gps.positions.dlq"
+            - name: CONSUMER_GROUP_ID
+              value: "notifier-group"
+            - name: PARCEL_API_URL
+              value: "http://parcel-api.app.svc.cluster.local:3000"
+            - name: SMTP_HOST
+              value: "mailhog.mail.svc.cluster.local"
+            - name: SMTP_PORT
+              value: "1025"
+            - name: NOTIFY_RADIUS_METERS
+              value: "2000"
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "200m"
+              memory: "128Mi"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3003
+            initialDelaySeconds: 20
+            periodSeconds: 15
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3003
+            initialDelaySeconds: 40
+            periodSeconds: 20

@@ -1,0 +1,61 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: greenlogistics-slo
+  namespace: monitoring
+  labels:
+    app: kube-prometheus-stack
+    release: kps
+    team: greenlogistics
+spec:
+  groups:
+    - name: greenlogistics.slo
+      interval: 30s
+      rules:
+        # ── Taux de requêtes HTTP ────────────────────────────────────────────
+        - record: job:http_requests_total:rate5m
+          expr: rate(http_requests_total[5m])
+
+        - record: job:http_errors_total:rate5m
+          expr: rate(http_requests_total{status_code=~"5.."}[5m])
+
+        # ── SLO 1 : Taux d'erreur parcel-api < 1% ───────────────────────────
+        - record: slo:parcel_api:error_rate:ratio5m
+          expr: |
+            sum(job:http_errors_total:rate5m{job="parcel-api"})
+            /
+            sum(job:http_requests_total:rate5m{job="parcel-api"})
+
+        - alert: SLOErrorRateBreach
+          expr: slo:parcel_api:error_rate:ratio5m > 0.01
+          for: 2m
+          labels:
+            severity: critical
+            team: greenlogistics
+            slo: error-rate
+          annotations:
+            summary: "Taux d'erreur parcel-api dépasse 1%"
+            description: "Taux actuel: {{ $value | humanizePercentage }}. SLO: <1%"
+            runbook: "Vérifier les logs parcel-api et l'état de PostgreSQL"
+
+        # ── SLO 2 : Latence parcel-api P95 < 200ms ──────────────────────────
+        - record: slo:parcel_api:latency_p95:5m
+          expr: |
+            histogram_quantile(0.95,
+              rate(http_request_duration_seconds_bucket{job="parcel-api"}[5m])
+            )
+
+        - alert: SLOLatencyP95Breach
+          expr: slo:parcel_api:latency_p95:5m > 0.2
+          for: 2m
+          labels:
+            severity: warning
+            team: greenlogistics
+            slo: latency-p95
+          annotations:
+            summary: "Latence P95 parcel-api dépasse 200ms"
+            description: "P95 actuel: {{ $value | humanizeDuration }}. SLO: <200ms"
+
+        # ── Error Budget ─────────────────────────────────────────────────────
+        - record: slo:parcel_api:error_budget_remaining
+          expr: 1 - (slo:parcel_api:error_rate:ratio5m / 0.01)

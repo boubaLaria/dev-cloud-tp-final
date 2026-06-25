@@ -1,0 +1,144 @@
+---
+# App of Apps : racine ArgoCD qui pointe vers le dépôt gitops
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: greenlogistics
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/OWNER/greenlogistics-gitops.git
+    targetRevision: main
+    path: apps        # dossier contenant les Application enfants
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+---
+# Application enfant : parcel-api
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: parcel-api
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/OWNER/greenlogistics-gitops.git
+    targetRevision: main
+    path: manifests/parcel-api
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: app
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false
+---
+# Application enfant : gps-ingestor
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: gps-ingestor
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/OWNER/greenlogistics-gitops.git
+    targetRevision: main
+    path: manifests/gps-ingestor
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: app
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false
+---
+# Application enfant : notifier
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: notifier
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/OWNER/greenlogistics-gitops.git
+    targetRevision: main
+    path: manifests/notifier
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: app
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false
+---
+# Application enfant : tracker-front
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: tracker-front
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/OWNER/greenlogistics-gitops.git
+    targetRevision: main
+    path: manifests/tracker-front
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: app
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false
+---
+# Application enfant : infrastructure partagée (postgres, mailhog, network policies)
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: infra
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/OWNER/greenlogistics-gitops.git
+    targetRevision: main
+    path: manifests/infra
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: app
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false
