@@ -8,7 +8,6 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  OWNER: ${{ github.repository_owner }}
 
 jobs:
   build-test-scan:
@@ -34,6 +33,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Set lowercase owner
+        run: echo "OWNER=${GITHUB_REPOSITORY_OWNER,,}" >> $GITHUB_ENV
 
       # ── Python services ───────────────────────────────────────────────────────
       - name: Setup Python
@@ -82,10 +84,11 @@ jobs:
 
       - name: Build & Push image
         id: build
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: services/${{ matrix.service }}
           push: ${{ github.event_name == 'push' }}
+          load: true
           tags: |
             ${{ env.REGISTRY }}/${{ env.OWNER }}/greenlogistics/${{ matrix.service }}:${{ github.sha }}
             ${{ env.REGISTRY }}/${{ env.OWNER }}/greenlogistics/${{ matrix.service }}:latest
@@ -93,9 +96,9 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Trivy — scan CVE
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@0.28.0
         with:
-          image-ref: ${{ env.REGISTRY }}/${{ env.OWNER }}/greenlogistics/${{ matrix.service }}:${{ github.sha }}
+          image-ref: ${{ steps.build.outputs.imageid }}
           severity: HIGH,CRITICAL
           exit-code: "1"
           ignore-unfixed: true
@@ -103,7 +106,7 @@ jobs:
           output: trivy-${{ matrix.service }}.sarif
 
       - name: Upload Trivy SARIF
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
           sarif_file: trivy-${{ matrix.service }}.sarif
@@ -117,6 +120,9 @@ jobs:
       contents: read
 
     steps:
+      - name: Set lowercase owner
+        run: echo "OWNER=${GITHUB_REPOSITORY_OWNER,,}" >> $GITHUB_ENV
+
       - name: Checkout gitops repo
         uses: actions/checkout@v4
         with:
@@ -128,7 +134,7 @@ jobs:
         run: |
           cd gitops
           for svc in parcel-api gps-ingestor notifier tracker-front; do
-            sed -i "s|ghcr.io/${{ env.OWNER }}/greenlogistics/${svc}:.*|ghcr.io/${{ env.OWNER }}/greenlogistics/${svc}:${{ github.sha }}|g" \
+            sed -i "s|ghcr.io/${OWNER}/greenlogistics/${svc}:.*|ghcr.io/${OWNER}/greenlogistics/${svc}:${{ github.sha }}|g" \
               k8s/${svc}/deployment.yaml 2>/dev/null || true
           done
 
