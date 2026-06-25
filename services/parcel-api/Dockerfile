@@ -5,7 +5,7 @@ RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
 
 FROM python:3.12-slim AS runner
 RUN addgroup --system --gid 1001 appgroup \
- && adduser --system --uid 1001 --gid 1001 --ingroup appgroup appuser
+ && adduser --system --uid 1001 --ingroup appgroup appuser
 WORKDIR /app
 COPY --from=builder /install /usr/local
 COPY src ./src
