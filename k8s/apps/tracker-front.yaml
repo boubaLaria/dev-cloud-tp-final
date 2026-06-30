@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: greenlogistics
+  name: tracker-front
   namespace: argocd
   finalizers:
     - resources-finalizer.argocd.argoproj.io
@@ -10,13 +10,13 @@ spec:
   source:
     repoURL: https://github.com/boubaLaria/dev-cloud-tp-final.git
     targetRevision: main
-    path: k8s/apps
+    path: k8s/tracker-front
   destination:
     server: https://kubernetes.default.svc
-    namespace: argocd
+    namespace: app
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
     syncOptions:
-      - CreateNamespace=true
+      - CreateNamespace=false

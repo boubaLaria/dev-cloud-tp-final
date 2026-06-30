@@ -21,7 +21,7 @@ spec:
     spec:
       containers:
         - name: notifier
-          image: ghcr.io/OWNER/greenlogistics/notifier:latest
+          image: ghcr.io/boubalaria/greenlogistics/notifier:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 3003

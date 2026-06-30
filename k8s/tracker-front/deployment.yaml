@@ -21,7 +21,7 @@ spec:
     spec:
       containers:
         - name: tracker-front
-          image: ghcr.io/OWNER/greenlogistics/tracker-front:latest
+          image: ghcr.io/boubalaria/greenlogistics/tracker-front:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 3002

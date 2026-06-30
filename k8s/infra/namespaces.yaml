@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: app
+  labels:
+    linkerd.io/inject: enabled
+    team: greenlogistics
+    env: production
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: messaging
+  labels:
+    team: greenlogistics
+    env: production
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: mail
+  labels:
+    team: greenlogistics
+    env: production

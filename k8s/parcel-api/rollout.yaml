@@ -28,7 +28,7 @@ spec:
       serviceAccountName: parcel-api-sa
       containers:
         - name: parcel-api
-          image: ghcr.io/OWNER/greenlogistics/parcel-api:latest
+          image: ghcr.io/boubalaria/greenlogistics/parcel-api:latest
           ports:
             - containerPort: 3000
           env:
