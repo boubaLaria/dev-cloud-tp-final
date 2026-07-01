@@ -87,8 +87,8 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: services/${{ matrix.service }}
+          platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name == 'push' }}
-          load: true
           tags: |
             ${{ env.REGISTRY }}/${{ env.OWNER }}/greenlogistics/${{ matrix.service }}:${{ github.sha }}
             ${{ env.REGISTRY }}/${{ env.OWNER }}/greenlogistics/${{ matrix.service }}:latest
