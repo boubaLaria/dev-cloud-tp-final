@@ -1,5 +1,6 @@
 ---
 # parcel-api : /api/parcels/** → /parcels/**
+# Regex (/.+|) capte soit "/sous-chemin" soit chaîne vide → évite le slash final sur le chemin racine
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -7,14 +8,14 @@ metadata:
   namespace: app
   annotations:
     nginx.ingress.kubernetes.io/use-regex: "true"
-    nginx.ingress.kubernetes.io/rewrite-target: /parcels/$2
+    nginx.ingress.kubernetes.io/rewrite-target: /parcels$1
 spec:
   ingressClassName: nginx
   rules:
     - host: greenlogistics.local
       http:
         paths:
-          - path: /api/parcels(/|$)(.*)
+          - path: /api/parcels(/.+|)
             pathType: ImplementationSpecific
             backend:
               service:
