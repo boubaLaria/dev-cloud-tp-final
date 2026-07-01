@@ -28,6 +28,10 @@ def mock_conn():
     conn.fetchrow = AsyncMock(return_value=FAKE_PARCEL)
     conn.fetch = AsyncMock(return_value=[FAKE_PARCEL])
     conn.execute = AsyncMock(return_value=None)
+    tx_ctx = MagicMock()
+    tx_ctx.__aenter__ = AsyncMock(return_value=None)
+    tx_ctx.__aexit__ = AsyncMock(return_value=False)
+    conn.transaction = MagicMock(return_value=tx_ctx)
     return conn
 
 
@@ -101,8 +105,14 @@ async def test_list_parcels_by_tracking_code(client):
     resp = await client.get("/parcels?trackingCode=GL-TEST12")
     assert resp.status_code == 200
     data = resp.json()
-    assert isinstance(data, list)
-    assert data[0]["tracking_code"] == "GL-TEST12"
+    assert isinstance(data, dict)
+    assert data["tracking_code"] == "GL-TEST12"
+
+
+async def test_list_parcels_by_tracking_code_not_found(client, mock_conn):
+    mock_conn.fetch.return_value = []
+    resp = await client.get("/parcels?trackingCode=GL-XXXXX")
+    assert resp.status_code == 404
 
 
 async def test_get_parcel(client):

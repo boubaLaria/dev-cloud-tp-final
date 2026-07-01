@@ -19,6 +19,10 @@ export default function TrackingCard({ parcel }) {
 
       <div className="card-meta">
         <div className="meta-item">
+          <span className="meta-label">Expéditeur</span>
+          <span className="meta-value">{parcel.sender_name}</span>
+        </div>
+        <div className="meta-item">
           <span className="meta-label">Destinataire</span>
           <span className="meta-value">{parcel.recipient_name}</span>
         </div>

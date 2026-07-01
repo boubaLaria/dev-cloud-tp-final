@@ -27,7 +27,7 @@ async def test_health(client):
 async def test_ingest_position_success(client):
     resp = await client.post(
         "/positions",
-        json={"parcelId": "uuid-1", "lat": 48.87, "lng": 2.33},
+        json={"parcelId": "uuid-1", "latitude": 48.87, "longitude": 2.33},
     )
     assert resp.status_code == 202
     body = resp.json()
@@ -38,7 +38,7 @@ async def test_ingest_position_success(client):
 async def test_ingest_position_invalid_lat(client):
     resp = await client.post(
         "/positions",
-        json={"parcelId": "uuid-1", "lat": 999, "lng": 2.33},
+        json={"parcelId": "uuid-1", "latitude": 999, "longitude": 2.33},
     )
     assert resp.status_code == 422
 
@@ -46,13 +46,13 @@ async def test_ingest_position_invalid_lat(client):
 async def test_ingest_position_invalid_lng(client):
     resp = await client.post(
         "/positions",
-        json={"parcelId": "uuid-1", "lat": 48.87, "lng": 200},
+        json={"parcelId": "uuid-1", "latitude": 48.87, "longitude": 200},
     )
     assert resp.status_code == 422
 
 
 async def test_ingest_position_missing_parcel_id(client):
-    resp = await client.post("/positions", json={"lat": 48.87, "lng": 2.33})
+    resp = await client.post("/positions", json={"latitude": 48.87, "longitude": 2.33})
     assert resp.status_code == 422
 
 
@@ -64,7 +64,7 @@ async def test_broker_error_returns_503(client, monkeypatch):
     )
     resp = await client.post(
         "/positions",
-        json={"parcelId": "uuid-1", "lat": 48.87, "lng": 2.33},
+        json={"parcelId": "uuid-1", "latitude": 48.87, "longitude": 2.33},
     )
     assert resp.status_code == 503
     assert resp.json()["detail"] == "Message broker unavailable"

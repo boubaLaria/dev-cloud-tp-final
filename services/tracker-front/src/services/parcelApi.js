@@ -11,10 +11,5 @@ export async function fetchParcel(trackingCode) {
   }
 
   const data = await res.json();
-  // parcel-api renvoie un tableau pour la recherche par trackingCode
-  const parcel = Array.isArray(data) ? data[0] : data;
-  if (!parcel) {
-    throw new Error(`Colis introuvable pour le numéro ${trackingCode}`);
-  }
-  return parcel;
+  return data;
 }

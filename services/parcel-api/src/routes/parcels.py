@@ -48,12 +48,14 @@ async def list_parcels(trackingCode: str | None = Query(None)):
     async with pool.acquire() as conn:
         if trackingCode:
             rows = await conn.fetch(
-                "SELECT * FROM parcels WHERE tracking_code = $1", trackingCode
+                "SELECT * FROM parcels WHERE tracking_code = $1", trackingCode.upper()
             )
-        else:
-            rows = await conn.fetch(
-                "SELECT * FROM parcels ORDER BY created_at DESC LIMIT 50"
-            )
+            if not rows:
+                raise HTTPException(status_code=404, detail="Parcel not found")
+            return record_to_dict(rows[0])
+        rows = await conn.fetch(
+            "SELECT * FROM parcels ORDER BY created_at DESC LIMIT 50"
+        )
     return [record_to_dict(r) for r in rows]
 
 
@@ -73,17 +75,23 @@ async def get_parcel(parcel_id: str):
 async def update_status(parcel_id: str, body: StatusUpdate):
     pool = await pool_manager.get_pool()
     async with pool.acquire() as conn:
-        row = await conn.fetchrow(
-            """
-            UPDATE parcels
-            SET status = $1, notified_at = $2, updated_at = NOW()
-            WHERE id = $3::uuid
-            RETURNING *
-            """,
-            body.status.value,
-            body.notifiedAt,
-            parcel_id,
-        )
-    if not row:
-        raise HTTPException(status_code=404, detail="Parcel not found")
+        async with conn.transaction():
+            row = await conn.fetchrow(
+                """
+                UPDATE parcels
+                SET status = $1, notified_at = COALESCE($2, notified_at), updated_at = NOW()
+                WHERE id = $3::uuid
+                RETURNING *
+                """,
+                body.status.value,
+                body.notifiedAt,
+                parcel_id,
+            )
+            if not row:
+                raise HTTPException(status_code=404, detail="Parcel not found")
+            await conn.execute(
+                "INSERT INTO delivery_events (parcel_id, event_type) VALUES ($1, $2)",
+                row["id"],
+                body.status.value,
+            )
     return record_to_dict(row)
