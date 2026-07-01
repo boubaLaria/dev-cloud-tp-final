@@ -21,7 +21,7 @@ spec:
     spec:
       containers:
         - name: tracker-front
-          image: ghcr.io/boubalaria/greenlogistics/tracker-front:2b582189c7e312a8728a90444ae156a1d8e0c3b5
+          image: ghcr.io/boubalaria/greenlogistics/tracker-front:40f59acd2558e69e1ee500823425f278438933c4
           imagePullPolicy: Always
           ports:
             - containerPort: 3002
