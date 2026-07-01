@@ -1,6 +1,6 @@
 import os
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, HTTPException
 
@@ -20,7 +20,7 @@ async def ingest_position(body: PositionInput):
         "parcelId": body.parcelId,
         "latitude": body.latitude,
         "longitude": body.longitude,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
     }
     try:
         await producer.publish(TOPIC, event)

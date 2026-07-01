@@ -4,7 +4,7 @@ import TrackingCard from './components/TrackingCard.jsx';
 import { fetchParcel } from './services/parcelApi.js';
 
 export default function App() {
-  const [trackingCode, setTrackingCode] = useState('');
+  const [_trackingCode, setTrackingCode] = useState('');
   const [parcel, setParcel] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
