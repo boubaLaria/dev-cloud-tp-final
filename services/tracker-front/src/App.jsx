@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import SearchBox from './components/SearchBox.jsx';
 import TrackingCard from './components/TrackingCard.jsx';
+import CreateParcelModal from './components/CreateParcelModal.jsx';
 import { fetchParcel } from './services/parcelApi.js';
 
 export default function App() {
@@ -8,6 +9,7 @@ export default function App() {
   const [parcel, setParcel] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [showCreate, setShowCreate] = useState(false);
 
   const search = useCallback(async (code) => {
     if (!code.trim()) return;
@@ -36,6 +38,12 @@ export default function App() {
     search(code);
   };
 
+  const handleParcelCreated = (newParcel) => {
+    setShowCreate(false);
+    setParcel(newParcel);
+    setTrackingCode(newParcel.tracking_code);
+  };
+
   return (
     <div className="app">
       <header className="header">
@@ -54,7 +62,17 @@ export default function App() {
             Entrez votre numéro de suivi pour localiser votre livraison
           </p>
           <SearchBox onSearch={handleSubmit} loading={loading} />
+          <button className="create-btn" onClick={() => setShowCreate(true)}>
+            + Créer un colis de test
+          </button>
         </div>
+
+        {showCreate && (
+          <CreateParcelModal
+            onCreated={handleParcelCreated}
+            onClose={() => setShowCreate(false)}
+          />
+        )}
 
         {error && (
           <div className="alert alert-error" role="alert">

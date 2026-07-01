@@ -1,5 +1,18 @@
 const BASE = import.meta.env.VITE_API_URL ?? '/api';
 
+export async function createParcel(data) {
+  const res = await fetch(`${BASE}/parcels`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail ? JSON.stringify(err.detail) : 'Erreur lors de la création');
+  }
+  return res.json();
+}
+
 export async function fetchParcel(trackingCode) {
   const res = await fetch(`${BASE}/parcels?trackingCode=${encodeURIComponent(trackingCode)}`);
 
