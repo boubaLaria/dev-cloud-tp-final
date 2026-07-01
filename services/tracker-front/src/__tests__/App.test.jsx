@@ -84,7 +84,7 @@ describe('App — Tracker Front', () => {
     });
     fireEvent.click(screen.getByText('Suivre'));
 
-    expect(screen.getByRole('button')).toBeDisabled();
+    expect(screen.getByRole('button', { name: /recherche/i })).toBeDisabled();
     await waitFor(() => expect(screen.getByText('GL-4F2A8C')).toBeInTheDocument());
   });
 });
