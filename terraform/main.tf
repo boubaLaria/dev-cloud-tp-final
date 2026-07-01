@@ -9,6 +9,10 @@ terraform {
       source  = "hashicorp/helm"
       version = "~> 2.13"
     }
+    null = {
+      source  = "hashicorp/null"
+      version = "~> 3.0"
+    }
   }
   backend "local" {
     path = "state/terraform.tfstate"
@@ -91,36 +95,12 @@ resource "helm_release" "kube_prometheus_stack" {
   }
 }
 
-# ── Redpanda ─────────────────────────────────────────────────────────────────
-resource "helm_release" "redpanda" {
-  name             = "redpanda"
-  repository       = "https://charts.redpanda.com"
-  chart            = "redpanda"
-  version          = var.redpanda_chart_version
-  namespace        = "messaging"
-  create_namespace = false
-  depends_on       = [module.namespaces]
-  timeout          = 300
+# ── Redpanda — manifest direct (chart Helm incompatible avec kind low-memory) ─
+resource "null_resource" "redpanda" {
+  depends_on = [module.namespaces]
 
-  set {
-    name  = "statefulset.replicas"
-    value = "1"
-  }
-  set {
-    name  = "resources.cpu.cores"
-    value = "1"
-  }
-  set {
-    name  = "resources.memory.container.max"
-    value = "1Gi"
-  }
-  set {
-    name  = "tls.enabled"
-    value = "false"
-  }
-  set {
-    name  = "external.enabled"
-    value = "false"
+  provisioner "local-exec" {
+    command = "kubectl --context kind-greenlogistics apply -f ${path.module}/../k8s/redpanda/statefulset.yaml"
   }
 }
 
@@ -168,6 +148,22 @@ resource "helm_release" "loki" {
     name  = "singleBinary.replicas"
     value = "1"
   }
+  set {
+    name  = "backend.replicas"
+    value = "0"
+  }
+  set {
+    name  = "read.replicas"
+    value = "0"
+  }
+  set {
+    name  = "write.replicas"
+    value = "0"
+  }
+  set {
+    name  = "loki.useTestSchema"
+    value = "true"
+  }
 }
 
 # ── Promtail ──────────────────────────────────────────────────────────────────
@@ -183,4 +179,32 @@ resource "helm_release" "promtail" {
     name  = "config.clients[0].url"
     value = "http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push"
   }
+}
+
+# ── Linkerd — cert generation + install via null_resource ────────────────────
+resource "null_resource" "linkerd" {
+  provisioner "local-exec" {
+    command = "${path.module}/scripts/install-linkerd.sh"
+  }
+}
+
+# ── Argo Rollouts ─────────────────────────────────────────────────────────────
+resource "helm_release" "argo_rollouts" {
+  name             = "argo-rollouts"
+  repository       = "https://argoproj.github.io/argo-helm"
+  chart            = "argo-rollouts"
+  namespace        = "argo-rollouts"
+  create_namespace = true
+  timeout          = 300
+}
+
+# ── External Secrets Operator ─────────────────────────────────────────────────
+resource "helm_release" "external_secrets" {
+  name             = "external-secrets"
+  repository       = "https://charts.external-secrets.io"
+  chart            = "external-secrets"
+  namespace        = "external-secrets"
+  create_namespace = false
+  depends_on       = [module.namespaces]
+  timeout          = 300
 }
