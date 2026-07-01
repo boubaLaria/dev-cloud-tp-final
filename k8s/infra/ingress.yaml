@@ -1,13 +1,13 @@
 ---
-# Require: kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/kind/deploy.yaml
+# parcel-api : /api/parcels/** → /parcels/**
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: greenlogistics
+  name: greenlogistics-parcel-api
   namespace: app
   annotations:
     nginx.ingress.kubernetes.io/use-regex: "true"
-    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    nginx.ingress.kubernetes.io/rewrite-target: /parcels/$2
 spec:
   ingressClassName: nginx
   rules:
@@ -21,20 +21,45 @@ spec:
                 name: parcel-api
                 port:
                   number: 3000
-          - path: /api/positions(/|$)(.*)
+---
+# gps-ingestor : /gps/** → /**  (simulate.sh utilise /gps/positions)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: greenlogistics-gps
+  namespace: app
+  annotations:
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: greenlogistics.local
+      http:
+        paths:
+          - path: /gps(/|$)(.*)
             pathType: ImplementationSpecific
             backend:
               service:
                 name: gps-ingestor
                 port:
                   number: 3001
-          - path: /track(/|$)(.*)
-            pathType: ImplementationSpecific
-            backend:
-              service:
-                name: tracker-front
-                port:
-                  number: 3002
+---
+# tracker-front : catch-all → SPA
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: greenlogistics-frontend
+  namespace: app
+  annotations:
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: greenlogistics.local
+      http:
+        paths:
           - path: /()(.*)
             pathType: ImplementationSpecific
             backend:
