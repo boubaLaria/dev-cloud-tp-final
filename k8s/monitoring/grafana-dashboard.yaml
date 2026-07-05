@@ -1,0 +1,111 @@
+# Dashboard Grafana custom "GreenLogistics — SLO parcel-api".
+# Auto-importé par le sidecar Grafana (label grafana_dashboard=1, NAMESPACE=ALL).
+# Panels : taux d'erreur (SLO), latence P95/P99, Error Budget, débit par route.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: greenlogistics-slo-dashboard
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+    team: greenlogistics
+data:
+  greenlogistics-slo.json: |
+    {
+      "annotations": {"list": []},
+      "editable": true,
+      "graphTooltip": 1,
+      "time": {"from": "now-1h", "to": "now"},
+      "refresh": "30s",
+      "title": "GreenLogistics — SLO parcel-api",
+      "uid": "greenlogistics-slo",
+      "tags": ["greenlogistics", "slo"],
+      "schemaVersion": 39,
+      "panels": [
+        {
+          "type": "stat",
+          "title": "Taux d'erreur (SLO < 1%)",
+          "gridPos": {"h": 5, "w": 8, "x": 0, "y": 0},
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {
+            "unit": "percentunit",
+            "thresholds": {"mode": "absolute", "steps": [
+              {"color": "green", "value": null},
+              {"color": "red", "value": 0.01}
+            ]}
+          }},
+          "options": {"colorMode": "background", "graphMode": "area", "reduceOptions": {"calcs": ["lastNotNull"]}},
+          "targets": [{"refId": "A", "datasource": {"type": "prometheus", "uid": "prometheus"},
+            "expr": "slo:parcel_api:error_rate:ratio5m"}]
+        },
+        {
+          "type": "stat",
+          "title": "Latence P95 (SLO < 200ms)",
+          "gridPos": {"h": 5, "w": 8, "x": 8, "y": 0},
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {
+            "unit": "s",
+            "thresholds": {"mode": "absolute", "steps": [
+              {"color": "green", "value": null},
+              {"color": "red", "value": 0.2}
+            ]}
+          }},
+          "options": {"colorMode": "background", "graphMode": "area", "reduceOptions": {"calcs": ["lastNotNull"]}},
+          "targets": [{"refId": "A", "datasource": {"type": "prometheus", "uid": "prometheus"},
+            "expr": "slo:parcel_api:latency_p95:5m"}]
+        },
+        {
+          "type": "gauge",
+          "title": "Error Budget restant",
+          "gridPos": {"h": 5, "w": 8, "x": 16, "y": 0},
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {
+            "unit": "percentunit", "min": 0, "max": 1,
+            "thresholds": {"mode": "absolute", "steps": [
+              {"color": "red", "value": null},
+              {"color": "orange", "value": 0.25},
+              {"color": "green", "value": 0.5}
+            ]}
+          }},
+          "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "showThresholdMarkers": true},
+          "targets": [{"refId": "A", "datasource": {"type": "prometheus", "uid": "prometheus"},
+            "expr": "clamp_min(slo:parcel_api:error_budget_remaining, 0)"}]
+        },
+        {
+          "type": "timeseries",
+          "title": "Débit HTTP par route (req/s)",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 5},
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"unit": "reqps", "custom": {"lineWidth": 2, "fillOpacity": 10}}},
+          "targets": [{"refId": "A", "datasource": {"type": "prometheus", "uid": "prometheus"},
+            "expr": "sum by (route) (rate(http_requests_total{job=\"parcel-api\"}[5m]))",
+            "legendFormat": "{{route}}"}]
+        },
+        {
+          "type": "timeseries",
+          "title": "Latence P95 / P99 (s)",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 5},
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"unit": "s", "custom": {"lineWidth": 2, "fillOpacity": 5}}},
+          "targets": [
+            {"refId": "A", "datasource": {"type": "prometheus", "uid": "prometheus"},
+             "expr": "histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket{job=\"parcel-api\"}[5m])))",
+             "legendFormat": "P95"},
+            {"refId": "B", "datasource": {"type": "prometheus", "uid": "prometheus"},
+             "expr": "histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket{job=\"parcel-api\"}[5m])))",
+             "legendFormat": "P99"}
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "Taux d'erreur dans le temps",
+          "gridPos": {"h": 7, "w": 24, "x": 0, "y": 13},
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"unit": "percentunit", "custom": {"lineWidth": 2, "fillOpacity": 10},
+            "thresholds": {"mode": "absolute", "steps": [
+              {"color": "green", "value": null}, {"color": "red", "value": 0.01}]}}},
+          "targets": [{"refId": "A", "datasource": {"type": "prometheus", "uid": "prometheus"},
+            "expr": "slo:parcel_api:error_rate:ratio5m", "legendFormat": "taux d'erreur"}]
+        }
+      ]
+    }

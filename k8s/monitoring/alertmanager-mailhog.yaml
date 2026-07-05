@@ -1,0 +1,29 @@
+# Route les alertes GreenLogistics vers MailHog (email simulé, SMTP :1025).
+# Satisfait « ≥ 1 alerte active (Alertmanager → MailHog) ».
+# Sélectionné par le Prometheus/Alertmanager (alertmanagerConfigSelector={}),
+# fonctionne avec alertmanagerConfigMatcherStrategy=None (cf. terraform/main.tf).
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: AlertmanagerConfig
+metadata:
+  name: mailhog
+  namespace: monitoring
+  labels:
+    release: kps
+    team: greenlogistics
+spec:
+  route:
+    receiver: mailhog
+    groupBy: ["alertname"]
+    groupWait: 30s
+    groupInterval: 5m
+    repeatInterval: 1h
+    matchers:
+      - name: team
+        value: greenlogistics
+  receivers:
+    - name: mailhog
+      emailConfigs:
+        - to: oncall@greenlogistics.local
+          from: alertmanager@greenlogistics.local
+          smarthost: mailhog.mail.svc.cluster.local:1025
+          requireTLS: false

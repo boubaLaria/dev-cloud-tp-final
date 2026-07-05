@@ -20,9 +20,13 @@ spec:
           expr: rate(http_requests_total{status_code=~"5.."}[5m])
 
         # ── SLO 1 : Taux d'erreur parcel-api < 1% ───────────────────────────
+        # `or on() vector(0)` => renvoie 0 (et non "vide") quand il n'y a
+        # aucune requête 5xx, pour que le SLO et l'Error Budget restent lisibles.
         - record: slo:parcel_api:error_rate:ratio5m
           expr: |
-            sum(job:http_errors_total:rate5m{job="parcel-api"})
+            (
+              sum(job:http_errors_total:rate5m{job="parcel-api"}) or on() vector(0)
+            )
             /
             sum(job:http_requests_total:rate5m{job="parcel-api"})
 
@@ -42,7 +46,7 @@ spec:
         - record: slo:parcel_api:latency_p95:5m
           expr: |
             histogram_quantile(0.95,
-              rate(http_request_duration_seconds_bucket{job="parcel-api"}[5m])
+              sum by (le) (rate(http_request_duration_seconds_bucket{job="parcel-api"}[5m]))
             )
 
         - alert: SLOLatencyP95Breach

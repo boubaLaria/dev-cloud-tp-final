@@ -1,0 +1,46 @@
+# ServiceMonitors — font scraper /metrics des services applicatifs par
+# kube-prometheus-stack. Le label `release: kps` est requis par le
+# serviceMonitorSelector du Prometheus déployé (matchLabels.release=kps).
+# jobLabel: app => le label `job` prend la valeur du label `app` du Service
+# (parcel-api, gps-ingestor, notifier) — cohérent avec les Recording Rules SLO.
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: parcel-api
+  namespace: monitoring
+  labels:
+    release: kps
+    team: greenlogistics
+spec:
+  jobLabel: app
+  namespaceSelector:
+    matchNames: [app]
+  selector:
+    matchLabels:
+      app: parcel-api
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 15s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: gps-ingestor
+  namespace: monitoring
+  labels:
+    release: kps
+    team: greenlogistics
+spec:
+  jobLabel: app
+  namespaceSelector:
+    matchNames: [app]
+  selector:
+    matchLabels:
+      app: gps-ingestor
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 15s
+# NB : le service `notifier` est un worker Redpanda sans endpoint /metrics HTTP,
+# il n'a donc pas de ServiceMonitor (le SLO porte sur parcel-api).

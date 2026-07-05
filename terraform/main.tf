@@ -83,15 +83,24 @@ resource "helm_release" "kube_prometheus_stack" {
   }
   set {
     name  = "prometheus.prometheusSpec.resources.requests.memory"
-    value = "256Mi"
+    value = "512Mi"
   }
   set {
     name  = "prometheus.prometheusSpec.resources.limits.memory"
-    value = "512Mi"
+    value = "1Gi"
   }
   set {
     name  = "alertmanager.enabled"
     value = "true"
+  }
+
+  # matcherStrategy=None : les routes des objets AlertmanagerConfig ne se voient
+  # pas forcer un matcher namespace=. Le routage → MailHog est défini dans le CR
+  # AlertmanagerConfig `k8s/monitoring/alertmanager-mailhog.yaml` (GitOps), qui
+  # matche les alertes team="greenlogistics".
+  set {
+    name  = "alertmanager.alertmanagerSpec.alertmanagerConfigMatcherStrategy.type"
+    value = "None"
   }
 }
 

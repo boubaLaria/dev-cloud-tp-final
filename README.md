@@ -55,9 +55,12 @@ bash services/gps-ingestor/scripts/simulate.sh $PARCEL_ID
 ## Structure
 
 ```
-services/           # Code source des 4 microservices Node.js
-k8s/                # Manifestes Kubernetes
-terraform/          # IaC — cluster kind + plateforme
+services/           # Code source des 4 microservices :
+                    #   parcel-api, gps-ingestor : Python 3.12 / FastAPI
+                    #   notifier                 : Node.js 20 / Express
+                    #   tracker-front            : React (Vite) → NGINX
+k8s/                # Manifestes Kubernetes (App of Apps ArgoCD)
+terraform/          # IaC — plateforme (ArgoCD, monitoring, Vault, Redpanda…)
 .github/workflows/  # CI/CD GitHub Actions
 docs/               # Architecture, captures, slides
 ```
