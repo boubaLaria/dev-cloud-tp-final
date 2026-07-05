@@ -97,7 +97,7 @@ jobs:
 
       - name: Trivy — install
         run: |
-          TRIVY_VERSION=0.57.1
+          TRIVY_VERSION=0.72.0
           wget -q --tries=3 -O /tmp/trivy.tar.gz \
             "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
           tar -xzf /tmp/trivy.tar.gz -C /usr/local/bin trivy
