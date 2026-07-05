@@ -1,201 +1,90 @@
-# Plan restant — GreenLogistics TP Final
+# Plan / Checklist finale — GreenLogistics TP Final
 
-> Soutenance **7 juillet 2026** · Stack : kind · ArgoCD · Redpanda · Vault · Linkerd
+> Soutenance & livrables : **lundi 6 juillet 2026, 09h00**
+> Stack LOCAL-FIRST : kind (3 nœuds) · ArgoCD · Redpanda · Vault · Linkerd · kube-prometheus-stack · Kubecost
+> Formateur (accès lecture) : `abconsulting113@gmail.com`
 
 ---
 
-## État des lieux
+## État des lieux (à jour)
 
-| Composant | Manifests/Code | Sur le cluster |
+| Composant | Manifests/Code | Sur le cluster local |
 |---|---|---|
-| CI GitHub Actions | ✅ complet | ⏳ pas encore pushé |
-| ArgoCD App of Apps | ✅ complet | ⏳ cluster inexistant |
-| Terraform (ArgoCD, Prometheus, Vault, Loki, Redpanda) | ✅ complet | ⏳ non appliqué |
-| kind-config.yaml (3 nœuds) | ✅ complet | ⏳ cluster inexistant |
-| Manifests k8s (deployments, services, HPA, rollout…) | ✅ complet | ⏳ non pushés |
-| Prometheus recording rules | ✅ complet | ⏳ non appliquées |
-| docs/architecture.md | ✅ complet | — |
-| Ingress NGINX | ❌ absent de Terraform | ⏳ |
-| Linkerd | ❌ absent de Terraform | ⏳ |
-| Argo Rollouts | ❌ absent de Terraform | ⏳ |
-| External Secrets Operator | ❌ absent de Terraform | ⏳ |
-| RAPPORT_TECHNIQUE.md | ❌ manquant | — |
-| Slides soutenance | ❌ manquant | — |
-| Captures d'écran | ❌ manquant | — |
+| CI GitHub Actions (build/test/Trivy/update-manifests) | ✅ complet | ✅ vert |
+| ArgoCD App of Apps (`infra`, 4 services, `monitoring`) | ✅ complet | ✅ 6 apps **Synced/Healthy** |
+| Terraform (ArgoCD, Prometheus, Vault, Loki, Redpanda, Rollouts, ESO, Linkerd) | ✅ complet | ✅ appliqué |
+| kind-config.yaml (3 nœuds) | ✅ complet | ✅ cluster UP |
+| Manifests k8s (deployments, services, HPA, rollout…) | ✅ complet | ✅ déployés |
+| Prometheus recording rules (2 SLO + error budget) | ✅ complet + **bugs PromQL corrigés** | ✅ actives, alimentées |
+| ServiceMonitors parcel-api / gps-ingestor | ✅ ajoutés | ✅ cibles `up` |
+| NetworkPolicy `allow-metrics-scrape` | ✅ ajoutée | ✅ scrape OK |
+| Dashboard Grafana custom SLO | ✅ ajouté | ✅ auto-importé (sidecar) |
+| Alerte Alertmanager → MailHog | ✅ `AlertmanagerConfig` | ✅ email `[FIRING]` reçu |
+| HPA (parcel-api, gps-ingestor) | ✅ complet | ✅ actifs |
+| Vault + External Secrets | ✅ complet | ✅ secret provisionné, ESO `Ready` |
+| Kubecost | ✅ complet | ✅ déployé |
+| docs/architecture.md + ADR.md | ✅ complet | — |
+| **RAPPORT_TECHNIQUE.md** | ✅ **rédigé** | — |
+| **Slides soutenance** (`docs/soutenance.html` → PDF) | ✅ **généré** | — |
+| **Captures d'écran** (`docs/captures/`) | ⏳ **à prendre** (guide prêt) | — |
+| Nettoyage dépôt (34 artefacts Node/pyc morts) | ✅ **purgé** | — |
+| Tag git `v1.0-soutenance` | ⏳ **à créer après commit** | — |
 
 ---
 
-## Phase 1 — Pousser le code (15 min) · **À faire en premier**
+## Ce qu'il reste (actions humaines uniquement)
 
-- [ ] Commiter et pusher tous les fichiers modifiés
-  ```bash
-  git add .github/workflows/ci.yaml k8s/ services/notifier/package-lock.json PLAN.md
-  git commit -m "feat: monorepo gitops, ArgoCD App of Apps, fix image refs"
-  git push
-  ```
-- [ ] Vérifier sur GitHub → Actions que les **4 jobs `build-test-scan`** passent au vert
-- [ ] Vérifier que le job **`update-manifests`** commite les tags SHA dans `k8s/*/deployment.yaml`
+### 1. Commit + push (⚠️ à faire — rien n'est encore commité)
+```bash
+git add -A
+git commit -m "fix(observability): Prometheus OOM + ServiceMonitors + dashboard SLO + alerte MailHog; docs: rapport + slides; chore: nettoyage artefacts morts"
+git push
+```
+> Au push : la CI tourne (build/test/Trivy) **et** ArgoCD crée l'app `monitoring` + synce la NetworkPolicy depuis GitHub → les correctifs observabilité deviennent durables (GitOps).
 
----
+### 2. Prendre les 5 captures → `docs/captures/`
+Cluster déjà **tout vert** — voir le guide `docs/captures/README.md` (URLs + mots de passe).
+1. `argocd-synced.png` — 6 apps Synced/Healthy
+2. `grafana-slo.png` — dashboard « GreenLogistics — SLO parcel-api »
+3. `ci-green.png` — pipeline GitHub Actions vert
+4. `kubecost-namespaces.png` — coût par namespace
+5. `mailhog-alert.png` — email d'alerte reçu
 
-## Phase 2 — Cluster local (30 min)
+### 3. Exporter les slides en PDF
+```bash
+# Ouvrir docs/soutenance.html dans le navigateur → Cmd+P → « Enregistrer au format PDF »
+open docs/soutenance.html
+# → sauvegarder sous docs/soutenance.pdf
+```
 
-- [ ] Créer le cluster kind 3 nœuds
-  ```bash
-  kind create cluster --config kind-config.yaml
-  ```
-- [ ] Provisionner la plateforme via Terraform
-  ```bash
-  cd terraform && terraform init && terraform apply -auto-approve
-  ```
-  > Installe : ArgoCD · kube-prometheus-stack · Vault (dev) · Loki · Promtail · Redpanda
-- [ ] Vérifier tous les pods en Running
-  ```bash
-  kubectl get pods -A
-  ```
+### 4. Tag git de la version soutenue (après commit + captures)
+```bash
+git tag v1.0-soutenance && git push --tags
+```
 
----
-
-## Phase 3 — Composants manquants dans Terraform (45 min)
-
-Ces 4 outils **ne sont pas dans `terraform/main.tf`** — installation manuelle requise.
-
-- [ ] **Ingress NGINX**
-  ```bash
-  helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
-  helm install ingress-nginx ingress-nginx/ingress-nginx -n ingress-nginx --create-namespace \
-    --set controller.hostPort.enabled=true
-  ```
-
-- [ ] **Linkerd**
-  ```bash
-  linkerd install --crds | kubectl apply -f -
-  linkerd install | kubectl apply -f -
-  linkerd check
-  ```
-
-- [ ] **Argo Rollouts**
-  ```bash
-  kubectl create namespace argo-rollouts
-  kubectl apply -n argo-rollouts \
-    -f https://github.com/argoproj/argo-rollouts/releases/latest/download/install.yaml
-  ```
-
-- [ ] **External Secrets Operator**
-  ```bash
-  helm repo add external-secrets https://charts.external-secrets.io
-  helm install external-secrets external-secrets/external-secrets \
-    -n external-secrets --create-namespace
-  ```
+### 5. Vérifier l'accès lecture du formateur
+- Dépôt GitHub → Settings → Collaborators → `abconsulting113@gmail.com`
 
 ---
 
-## Phase 4 — Bootstrap application (30 min)
-
-- [ ] Provisionner les secrets dans Vault
-  ```bash
-  kubectl -n vault exec -it vault-0 -- \
-    vault kv put secret/greenlogistics/api \
-    database_url="postgresql://gluser:changeme@postgres.app.svc.cluster.local:5432/greenlogistics"
-  ```
-- [ ] Créer le secret `vault-token` pour ESO
-  ```bash
-  kubectl create secret generic vault-token \
-    -n external-secrets --from-literal=token=root
-  ```
-- [ ] Appliquer la root app ArgoCD
-  ```bash
-  kubectl apply -f k8s/argocd-app.yaml
-  ```
-- [ ] Vérifier ArgoCD — toutes les apps **Synced / Healthy**
-  ```bash
-  # port-forward si pas d'ingress encore
-  kubectl port-forward -n argocd svc/argocd-server 8080:443
-  # https://localhost:8080 · user: admin
-  ```
-- [ ] Ajouter `greenlogistics.local` dans `/etc/hosts`
-  ```bash
-  echo "127.0.0.1 greenlogistics.local" | sudo tee -a /etc/hosts
-  ```
-
----
-
-## Phase 5 — Validation end-to-end (30 min)
-
-- [ ] Créer un colis et le passer en `OUT_FOR_DELIVERY`
-  ```bash
-  PARCEL_ID=$(curl -s -X POST http://greenlogistics.local/api/parcels \
-    -H "Content-Type: application/json" \
-    -d '{"senderName":"Alice","recipientName":"Bob","recipientEmail":"bob@test.com",
-         "recipientAddress":"12 rue de la Paix, Paris","recipientLat":48.8698,"recipientLng":2.3322}' \
-    | jq -r '.id')
-
-  curl -X PATCH http://greenlogistics.local/api/parcels/$PARCEL_ID/status \
-    -H "Content-Type: application/json" -d '{"status":"OUT_FOR_DELIVERY"}'
-  ```
-- [ ] Lancer la simulation GPS
-  ```bash
-  bash services/gps-ingestor/scripts/simulate.sh $PARCEL_ID
-  ```
-- [ ] Vérifier l'email dans MailHog → `http://localhost:8025`
-  ```bash
-  kubectl port-forward -n mail svc/mailhog 8025:8025
-  ```
-- [ ] Vérifier tracker-front → `http://greenlogistics.local/track`
-
----
-
-## Phase 6 — Observabilité (20 min)
-
-- [ ] Appliquer les recording rules Prometheus
-  ```bash
-  kubectl apply -f k8s/monitoring/recording-rules.yaml
-  ```
-- [ ] Grafana — ajouter datasource Loki
-  - URL : `http://loki.monitoring.svc.cluster.local:3100`
-  - Accès Grafana : `http://localhost:30090`
-- [ ] Grafana — importer dashboard **FastAPI Observability** (ID `17819`)
-- [ ] Vérifier métriques et logs en temps réel durant la simulation GPS
-
----
-
-## Phase 7 — Démos soutenance (répéter avant J7)
-
-- [ ] **Self-Heal ArgoCD** (~90 sec)
-  ```bash
-  kubectl scale deploy/parcel-api -n app --replicas=0
-  # ArgoCD resynce automatiquement → observer dans l'UI
-  ```
-- [ ] **Canary Rollout** (Argo Rollouts)
-  ```bash
-  kubectl apply -f k8s/parcel-api/rollout.yaml
-  kubectl argo rollouts get rollout parcel-api -n app --watch
-  ```
-- [ ] **HPA — autoscaling gps-ingestor**
-  ```bash
-  kubectl get hpa -n app -w
-  ```
-- [ ] **Kubecost** — coût par namespace
-  ```bash
-  helm repo add cost-analyzer https://kubecost.github.io/cost-analyzer
-  helm install kubecost cost-analyzer/cost-analyzer -n kubecost --create-namespace
-  kubectl port-forward -n kubecost svc/kubecost-cost-analyzer 9091:9090
-  ```
+## Répétition des démos live (avant la soutenance)
 
 > **Conseil** : enregistrer une vidéo de 60–90 s de chaque démo — plan B si le cluster crashe en live.
 
+- [ ] **Self-Heal ArgoCD** (~90 s) : `kubectl scale deploy/parcel-api -n app --replicas=0` → resync auto
+- [ ] **Canary Rollout** : `kubectl argo rollouts get rollout parcel-api -n app --watch`
+- [ ] **HPA** : générer du trafic → `kubectl get hpa -n app -w`
+- [ ] **Chaîne métier** : créer colis → `OUT_FOR_DELIVERY` → simulation GPS → email MailHog
+- [ ] **Kubecost** : coût par namespace
+- [ ] **Alerte SLO** : provoquer des 5xx → alerte `[FIRING]` dans MailHog
+
 ---
 
-## Phase 8 — Livrable final (avant J7)
+## Rappel — plan de la soutenance (25 min)
 
-- [ ] `RAPPORT_TECHNIQUE.md` — 8 à 15 pages
-  - Architecture · choix techniques · ADR · difficultés · résultats
-- [ ] Slides soutenance → `docs/soutenance.pdf`
-  - 25 min : 5 min archi · 10 min démo live · 5 min retex · 5 min Q&A
-- [ ] Captures d'écran → `docs/captures/`
-  - ArgoCD Synced · Dashboard Grafana · Pipeline CI vert · Kubecost par namespace
-- [ ] Tag git de la version soutenue
-  ```bash
-  git tag v1.0-soutenance && git push --tags
-  ```
-- [ ] Vérifier accès lecture formateur — `abconsulting113@gmail.com`
+| Bloc | Durée | Contenu |
+|---|---|---|
+| Architecture | 5 min | 4 services, async Redpanda, GitOps, sécurité |
+| Démo live | 10 min | chaîne métier + self-heal + HPA + observabilité + alerte |
+| Retour d'expérience | 5 min | incidents (Prometheus OOM, ESO, migration Node→Python) |
+| Q&A | 5 min | — |

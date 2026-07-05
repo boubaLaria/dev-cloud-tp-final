@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GreenLogistics — Soutenance</title>
+<style>
+  :root{
+    --bg:#0e1a14; --bg2:#132b1f; --fg:#e8f5ec; --muted:#9fc4ac;
+    --accent:#34d399; --accent2:#22d3ee; --warn:#fbbf24; --danger:#f87171;
+    --card:#16241c; --border:#2a4535; --code:#0a130e;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg); color:var(--fg); overflow:hidden;
+    -webkit-font-smoothing:antialiased;
+  }
+  .deck{height:100vh;width:100vw;position:relative}
+  .slide{
+    position:absolute; inset:0; display:none; flex-direction:column;
+    padding:6vh 7vw; justify-content:flex-start;
+    background:linear-gradient(160deg,var(--bg) 0%,var(--bg2) 100%);
+  }
+  .slide.active{display:flex}
+  h1{font-size:3.4rem;line-height:1.05;letter-spacing:-1px;margin-bottom:1.5rem}
+  h2{font-size:2.3rem;margin-bottom:1.8rem;color:var(--accent);letter-spacing:-.5px}
+  h2 .num{color:var(--muted);font-size:1.3rem;font-weight:400;margin-right:.6rem}
+  h3{font-size:1.35rem;color:var(--accent2);margin:.4rem 0 .8rem}
+  p,li{font-size:1.35rem;line-height:1.65;color:var(--fg)}
+  .muted{color:var(--muted)}
+  ul{list-style:none;margin:.4rem 0}
+  li{padding-left:1.8rem;position:relative;margin:.55rem 0}
+  li::before{content:"▹";position:absolute;left:0;color:var(--accent);font-weight:700}
+  li.ok::before{content:"✅"}
+  li.warn::before{content:"⚠️"}
+  .sub{font-size:1.15rem;color:var(--muted)}
+  strong{color:#fff}
+  .tag{color:var(--accent)}
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:2.4rem;margin-top:.5rem}
+  .cols3{display:grid;grid-template-columns:repeat(3,1fr);gap:1.4rem;margin-top:.5rem}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.4rem 1.6rem}
+  .card h3{margin-top:0}
+  .card p,.card li{font-size:1.1rem}
+  code,pre{font-family:"SF Mono",Menlo,Consolas,monospace}
+  pre{background:var(--code);border:1px solid var(--border);border-radius:10px;
+      padding:1.2rem 1.4rem;font-size:1.05rem;line-height:1.6;overflow:auto;color:#cdeede;margin:.6rem 0}
+  .kv{color:var(--accent2)}
+  .metric{display:flex;gap:2.5rem;margin-top:1.2rem;flex-wrap:wrap}
+  .metric .m{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.2rem 1.6rem;min-width:160px}
+  .metric .m .v{font-size:2.6rem;font-weight:700;color:var(--accent)}
+  .metric .m .l{font-size:1rem;color:var(--muted);margin-top:.2rem}
+  .flow{font-family:"SF Mono",Menlo,monospace;font-size:1.1rem;line-height:1.9;
+        background:var(--code);border:1px solid var(--border);border-radius:10px;padding:1.4rem;color:#bfe8d2;white-space:pre;overflow:auto}
+  .footer{position:absolute;bottom:2.5vh;left:7vw;right:7vw;display:flex;justify-content:space-between;
+          font-size:.9rem;color:var(--muted);border-top:1px solid var(--border);padding-top:.8rem}
+  .badge{display:inline-block;background:var(--card);border:1px solid var(--border);
+         border-radius:999px;padding:.35rem 1rem;font-size:1rem;color:var(--accent);margin:.25rem .35rem .25rem 0}
+  .title-wrap{justify-content:center}
+  .title-wrap .lead{font-size:1.6rem;color:var(--muted);margin-bottom:.6rem}
+  .title-wrap .sujet{font-size:1.5rem;color:var(--accent2);margin-top:1.2rem}
+  .title-wrap .stack{margin-top:2rem}
+  table{border-collapse:collapse;width:100%;margin-top:.6rem;font-size:1.1rem}
+  th,td{text-align:left;padding:.6rem .9rem;border-bottom:1px solid var(--border)}
+  th{color:var(--accent2);font-weight:600}
+  td .ok{color:var(--accent)}
+  .nav{position:fixed;bottom:14px;right:18px;font-size:.85rem;color:var(--muted);z-index:10}
+  .progress{position:fixed;top:0;left:0;height:4px;background:var(--accent);z-index:20;transition:width .2s}
+  .big{font-size:1.5rem}
+
+  @media print{
+    @page{size:1280px 720px;margin:0}
+    html,body{height:auto;overflow:visible}
+    .deck{height:auto}
+    .slide{display:flex!important;position:relative;inset:auto;height:720px;width:1280px;
+           page-break-after:always;break-after:page}
+    .nav,.progress{display:none}
+  }
+</style>
+</head>
+<body>
+<div class="progress" id="progress"></div>
+<div class="deck" id="deck">
+
+  <!-- 1 — TITRE -->
+  <section class="slide active title-wrap">
+    <p class="lead">Projet Final — Développer pour le Cloud · Master 2</p>
+    <h1>GreenLogistics 🌱📦</h1>
+    <p class="sujet">Sujet A — Tracking temps réel de livraison dernière mile</p>
+    <div class="stack">
+      <span class="badge">kind (3 nœuds)</span>
+      <span class="badge">ArgoCD · GitOps</span>
+      <span class="badge">Redpanda</span>
+      <span class="badge">Vault + ESO</span>
+      <span class="badge">Linkerd (mTLS)</span>
+      <span class="badge">Prometheus / Grafana</span>
+      <span class="badge">Kubecost</span>
+    </div>
+    <p class="muted" style="margin-top:2.4rem">Soutenance — 6 juillet 2026 · Équipe GreenLogistics · Stack 100 % locale</p>
+  </section>
+
+  <!-- 2 — CONTEXTE MÉTIER -->
+  <section class="slide">
+    <h2><span class="num">01</span>Contexte métier</h2>
+    <p>Startup de <strong>livraison écologique du dernier kilomètre</strong> : suivre les colis en temps réel et prévenir le destinataire à l'approche du livreur.</p>
+    <div class="cols3" style="margin-top:1.6rem">
+      <div class="card"><h3>Destinataire</h3><p class="sub">Notification « livraison imminente » fiable — &lt; 5 min avant l'arrivée.</p></div>
+      <div class="card"><h3>Exploitant</h3><p class="sub">Qualité de service : taux d'erreur API &lt; 1 %, latence P95 &lt; 200 ms.</p></div>
+      <div class="card"><h3>Plateforme</h3><p class="sub">Déployer sans risque (GitOps), observer, maîtriser les coûts.</p></div>
+    </div>
+    <div class="footer"><span>GreenLogistics</span><span>Contexte</span></div>
+  </section>
+
+  <!-- 3 — ARCHITECTURE -->
+  <section class="slide">
+    <h2><span class="num">02</span>Architecture — 4 microservices</h2>
+    <div class="flow">Client ──▶ Ingress NGINX (greenlogistics.local)
+              │
+   ┌──────────┼───────────────┬───────────────┐
+   ▼          ▼               ▼               ▼
+tracker-front  parcel-api   gps-ingestor    (/, /api, /gps)
+                 │             │
+                 ▼             ▼  topic "gps-positions"
+             PostgreSQL     Redpanda ──────▶ notifier ──▶ MailHog (SMTP)</div>
+    <p class="sub" style="margin-top:1.2rem">Communication <strong>synchrone</strong> (HTTP via Ingress) + <strong>asynchrone</strong> (Redpanda, compatible Kafka) → le pic GPS n'impacte pas l'API colis.</p>
+    <div class="footer"><span>GreenLogistics</span><span>Architecture · bloc 4.1</span></div>
+  </section>
+
+  <!-- 4 — LES SERVICES -->
+  <section class="slide">
+    <h2><span class="num">02</span>Les quatre services</h2>
+    <table>
+      <tr><th>Service</th><th>Runtime</th><th>Rôle</th><th>IO</th></tr>
+      <tr><td><code>parcel-api</code></td><td>Python 3.12 / FastAPI</td><td>CRUD colis, statuts, événements</td><td>PostgreSQL (asyncpg)</td></tr>
+      <tr><td><code>gps-ingestor</code></td><td>Python 3.12 / FastAPI</td><td>Ingestion points GPS</td><td>Producteur Redpanda</td></tr>
+      <tr><td><code>notifier</code></td><td>Node.js 20 / Express</td><td>Distance haversine → notifie</td><td>Consumer Redpanda → MailHog</td></tr>
+      <tr><td><code>tracker-front</code></td><td>React (Vite) → NGINX</td><td>SPA publique de suivi</td><td>Appelle parcel-api</td></tr>
+    </table>
+    <p class="sub" style="margin-top:1.4rem">🔎 <strong>Honnêteté d'ingénierie</strong> : <code>parcel-api</code> et <code>gps-ingestor</code> ont été migrés de Node → Python/FastAPI en cours de projet (async + <code>prometheus_client</code>). Les 34 artefacts Node morts ont été purgés.</p>
+    <div class="footer"><span>GreenLogistics</span><span>Architecture</span></div>
+  </section>
+
+  <!-- 5 — ADR -->
+  <section class="slide">
+    <h2><span class="num">03</span>Décisions d'architecture (ADR)</h2>
+    <table>
+      <tr><th>ADR</th><th>Décision</th><th>Raison clé</th></tr>
+      <tr><td>001</td><td><strong>Redpanda</strong> comme broker</td><td>API Kafka, sans ZooKeeper, plus léger</td></tr>
+      <tr><td>002</td><td><strong>PostgreSQL</strong> StatefulSet</td><td>Données structurées, UUID natif</td></tr>
+      <tr><td>003</td><td><strong>Linkerd</strong> plutôt qu'Istio</td><td>mTLS auto, ~400 Mo vs ~1 Go — critique en local</td></tr>
+      <tr><td>004</td><td><strong>CI/CD pull-based</strong> (ArgoCD)</td><td>Aucun kubeconfig exposé dans la CI</td></tr>
+      <tr><td>005</td><td><strong>Vault + External Secrets</strong></td><td>Zéro secret en clair dans Git</td></tr>
+    </table>
+    <div class="footer"><span>GreenLogistics</span><span>ADR.md</span></div>
+  </section>
+
+  <!-- 6 — CI/CD -->
+  <section class="slide">
+    <h2><span class="num">04</span>CI/CD sécurisé — pull-based</h2>
+    <div class="cols">
+      <div>
+        <h3>GitHub Actions (matrice ×4)</h3>
+        <ul>
+          <li class="ok">Lint + tests (ruff/pytest · eslint/vitest)</li>
+          <li class="ok">Build multi-arch → GHCR</li>
+          <li class="ok"><strong>Trivy</strong> : échec si CVE <span class="tag">CRITICAL</span> corrigeable</li>
+          <li class="ok"><code>update-manifests</code> réécrit le tag SHA</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Déploiement GitOps</h3>
+        <ul>
+          <li class="ok">La CI <strong>ne touche jamais</strong> au cluster</li>
+          <li class="ok"><strong>ArgoCD</strong> tire le nouveau tag et déploie</li>
+          <li class="ok">Secrets via <strong>Vault + ESO</strong>, hors Git</li>
+        </ul>
+      </div>
+    </div>
+    <div class="flow" style="margin-top:1.4rem">push ─▶ CI (test/build/scan) ─▶ commit tag SHA ─▶ ArgoCD sync ─▶ cluster</div>
+    <div class="footer"><span>GreenLogistics</span><span>Blocs 4.4 / 4.5</span></div>
+  </section>
+
+  <!-- 7 — GITOPS -->
+  <section class="slide">
+    <h2><span class="num">05</span>GitOps — App of Apps</h2>
+    <div class="cols">
+      <div>
+        <p>La racine <code>greenlogistics</code> déploie 6 Applications enfants :</p>
+        <ul>
+          <li><code>infra</code> (Vault, ESO, netpol…)</li>
+          <li><code>parcel-api</code> · <code>gps-ingestor</code></li>
+          <li><code>notifier</code> · <code>tracker-front</code></li>
+          <li><code>monitoring</code> (SLO, dashboard, alerte)</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Déploiement progressif</h3>
+        <p class="sub"><strong>Self-Heal</strong> + <strong>prune</strong> activés → démo live : scale à 0 → resync auto (~90 s).</p>
+        <p class="sub" style="margin-top:.8rem"><strong>Canary</strong> : <code>parcel-api</code> en Argo Rollouts, montée en charge progressive.</p>
+      </div>
+    </div>
+    <div class="footer"><span>GreenLogistics</span><span>Bloc 4.5</span></div>
+  </section>
+
+  <!-- 8 — OBSERVABILITÉ -->
+  <section class="slide">
+    <h2><span class="num">06</span>Observabilité & SRE</h2>
+    <div class="cols">
+      <div>
+        <ul>
+          <li class="ok">kube-prometheus-stack (Prom + Grafana + Alertmanager)</li>
+          <li class="ok">Loki + Promtail — logs centralisés</li>
+          <li class="ok"><code>/metrics</code> scrapé via <strong>ServiceMonitor</strong></li>
+          <li class="ok"><strong>Dashboard Grafana custom</strong> SLO</li>
+          <li class="ok"><strong>Alerte → MailHog</strong> (vérifiée bout-en-bout)</li>
+        </ul>
+      </div>
+      <div>
+        <h3>2 SLO en Recording Rules</h3>
+        <ul>
+          <li>Taux d'erreur <code>parcel-api</code> &lt; 1 %</li>
+          <li>Latence P95 &lt; 200 ms</li>
+          <li>+ Error Budget restant</li>
+        </ul>
+      </div>
+    </div>
+    <div class="metric">
+      <div class="m"><div class="v">0 %</div><div class="l">Taux d'erreur</div></div>
+      <div class="m"><div class="v">~5 ms</div><div class="l">Latence P95</div></div>
+      <div class="m"><div class="v">100 %</div><div class="l">Error Budget</div></div>
+    </div>
+    <div class="footer"><span>GreenLogistics</span><span>Bloc 4.6</span></div>
+  </section>
+
+  <!-- 9 — SÉCURITÉ + FINOPS -->
+  <section class="slide">
+    <h2><span class="num">07</span>Sécurité (DevSecOps) & FinOps</h2>
+    <div class="cols">
+      <div>
+        <h3>Sécurité</h3>
+        <ul>
+          <li class="ok">Trivy bloquant (CVE CRITICAL)</li>
+          <li class="ok"><strong>NetworkPolicies</strong> deny-by-default + allow-lists</li>
+          <li class="ok"><strong>mTLS</strong> automatique via Linkerd</li>
+          <li class="ok">Images non-root, <code>HEALTHCHECK</code>, multi-stage</li>
+          <li class="ok">RBAC : SA + Role/RoleBinding (module TF)</li>
+        </ul>
+      </div>
+      <div>
+        <h3>FinOps</h3>
+        <ul>
+          <li class="ok"><strong>Kubecost</strong> — coût par namespace</li>
+          <li class="ok">Labels <code>team</code>/<code>env</code>/<code>app</code></li>
+          <li class="ok"><code>requests</code>/<code>limits</code> sur tous les pods</li>
+          <li class="ok"><strong>HPA</strong> parcel-api 2→6 · gps-ingestor 2→10</li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer"><span>GreenLogistics</span><span>Blocs 4.7 / 4.8</span></div>
+  </section>
+
+  <!-- 10 — DÉMO -->
+  <section class="slide title-wrap">
+    <h1 style="color:var(--accent2)">▶ Démo live</h1>
+    <ul class="big" style="margin-top:1rem">
+      <li>1️⃣ Chaîne métier : colis → <code>OUT_FOR_DELIVERY</code> → GPS → email MailHog</li>
+      <li>2️⃣ ArgoCD Self-Heal : scale à 0 → resync auto</li>
+      <li>3️⃣ HPA sous charge (trafic → montée des replicas)</li>
+      <li>4️⃣ Grafana : dashboard SLO en temps réel</li>
+      <li>5️⃣ Alerte SLO → email <code>[FIRING]</code> dans MailHog</li>
+      <li>6️⃣ Kubecost : coût par namespace</li>
+    </ul>
+    <div class="footer"><span>GreenLogistics</span><span>10 min</span></div>
+  </section>
+
+  <!-- 11 — RETEX incidents -->
+  <section class="slide">
+    <h2><span class="num">08</span>Retour d'expérience — incidents résolus</h2>
+    <div class="cols">
+      <div class="card">
+        <h3>🔴 Prometheus OOMKilled</h3>
+        <p class="sub">196 restarts, tout le monitoring mort. Limite 512Mi dépassée au chargement du WAL (253 segments). → limite portée à <strong>1 Gi</strong>. Stable, 0 restart.</p>
+      </div>
+      <div class="card">
+        <h3>📉 Métriques absentes</h3>
+        <p class="sub">Aucun <code>ServiceMonitor</code> + NetworkPolicy bloquant le scrape. → 2 SM + netpol <code>allow-metrics-scrape</code>.</p>
+      </div>
+      <div class="card">
+        <h3>🧮 SLO PromQL faux</h3>
+        <p class="sub"><code>rate(erreurs)</code> vide sans 5xx · quantile non agrégé. → <code>or on() vector(0)</code> + <code>sum by (le)</code>.</p>
+      </div>
+      <div class="card">
+        <h3>🔑 ExternalSecret Degraded</h3>
+        <p class="sub">Vault dev-mode réinitialisé au restart → secret re-provisionné. Procédure documentée.</p>
+      </div>
+    </div>
+    <div class="footer"><span>GreenLogistics</span><span>Difficultés</span></div>
+  </section>
+
+  <!-- 12 — RÉSULTATS -->
+  <section class="slide">
+    <h2><span class="num">09</span>Résultats — état du cluster</h2>
+    <ul>
+      <li class="ok"><strong>ArgoCD</strong> : 6 applications <span class="tag">Synced / Healthy</span></li>
+      <li class="ok"><strong>SLO</strong> parcel-api : erreur 0 %, P95 ≈ 5 ms, Error Budget 100 %</li>
+      <li class="ok"><strong>HPA</strong> actifs (parcel-api 2/6, gps-ingestor 2/10)</li>
+      <li class="ok"><strong>Prometheus</strong> stable, cibles <code>parcel-api</code> / <code>gps-ingestor</code> <span class="tag">up</span></li>
+      <li class="ok"><strong>Alerte</strong> livrée dans MailHog — <code>[FIRING:1] … (critical greenlogistics)</code></li>
+      <li class="ok"><strong>Reproductible</strong> sur machine tierce en &lt; 30 min (SETUP.md)</li>
+    </ul>
+    <div class="footer"><span>GreenLogistics</span><span>Preuves → docs/captures/</span></div>
+  </section>
+
+  <!-- 13 — AMÉLIORATIONS -->
+  <section class="slide">
+    <h2><span class="num">10</span>Pistes d'amélioration</h2>
+    <ul>
+      <li>Tags <strong>sémantiques</strong> d'images sur release (<code>vX.Y.Z</code>) en plus du SHA</li>
+      <li>Endpoint <code>/metrics</code> sur <code>notifier</code> → SLO de consommation d'événements</li>
+      <li>SLO <strong>multi-fenêtres</strong> (burn-rate alerting) plutôt qu'un seuil simple</li>
+      <li>Vault en mode <strong>persistant</strong> (non-dev) → plus de re-provisionnement</li>
+      <li>Bonus : Chaos Mesh · tracing Tempo/OpenTelemetry · e2e (k6/Playwright) en CI</li>
+    </ul>
+    <div class="footer"><span>GreenLogistics</span><span>§7 rapport</span></div>
+  </section>
+
+  <!-- 14 — MERCI -->
+  <section class="slide title-wrap">
+    <h1>Merci 🌱</h1>
+    <p class="big muted">Questions ?</p>
+    <div class="stack">
+      <span class="badge">6 apps Synced/Healthy</span>
+      <span class="badge">SLO tenus</span>
+      <span class="badge">Alerte vérifiée</span>
+      <span class="badge">100 % local & reproductible</span>
+    </div>
+    <p class="muted" style="margin-top:2rem">Dépôt : github.com/boubaLaria/dev-cloud-tp-final · tag <code>v1.0-soutenance</code></p>
+  </section>
+
+</div>
+
+<div class="nav" id="nav">1 / 14 &nbsp;·&nbsp; ← → · F plein écran · P imprimer</div>
+
+<script>
+  const slides=[...document.querySelectorAll('.slide')];
+  let i=0;
+  const nav=document.getElementById('nav');
+  const prog=document.getElementById('progress');
+  function show(n){
+    i=Math.max(0,Math.min(slides.length-1,n));
+    slides.forEach((s,k)=>s.classList.toggle('active',k===i));
+    nav.firstChild.textContent=(i+1)+' / '+slides.length+' ';
+    prog.style.width=((i+1)/slides.length*100)+'%';
+  }
+  document.addEventListener('keydown',e=>{
+    if(e.key==='ArrowRight'||e.key==='PageDown'||e.key===' ')show(i+1);
+    else if(e.key==='ArrowLeft'||e.key==='PageUp')show(i-1);
+    else if(e.key==='Home')show(0);
+    else if(e.key==='End')show(slides.length-1);
+    else if(e.key.toLowerCase()==='f'){
+      if(!document.fullscreenElement)document.documentElement.requestFullscreen();
+      else document.exitFullscreen();
+    }
+  });
+  document.addEventListener('click',e=>{ if(e.clientX>window.innerWidth*0.5)show(i+1); else show(i-1); });
+  show(0);
+</script>
+</body>
+</html>
