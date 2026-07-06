@@ -28,7 +28,7 @@ spec:
       serviceAccountName: parcel-api-sa
       containers:
         - name: parcel-api
-          image: ghcr.io/boubalaria/greenlogistics/parcel-api:59587bc5c26da252916824df87f1e23c0430f5ef
+          image: ghcr.io/boubalaria/greenlogistics/parcel-api:1ce3147d624d292e741f62ef18205195a4d367ec
           imagePullPolicy: Always
           ports:
             - containerPort: 3000
