@@ -21,7 +21,7 @@ spec:
     spec:
       containers:
         - name: gps-ingestor
-          image: ghcr.io/boubalaria/greenlogistics/gps-ingestor:44232b873fedfd0e4005389d5d14977d40c9afd6
+          image: ghcr.io/boubalaria/greenlogistics/gps-ingestor:27f49e543ab35e0795765c1e63a28140ffe2f856
           imagePullPolicy: Always
           ports:
             - containerPort: 3001
