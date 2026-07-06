@@ -129,7 +129,7 @@ tracker-front  parcel-api   gps-ingestor    (/, /api, /gps)
 
   <!-- 4 — LES SERVICES -->
   <section class="slide">
-    <h2><span class="num">02</span>Les quatre services</h2>
+    <h2><span class="num">03</span>Les quatre services</h2>
     <table>
       <tr><th>Service</th><th>Runtime</th><th>Rôle</th><th>IO</th></tr>
       <tr><td><code>parcel-api</code></td><td>Python 3.12 / FastAPI</td><td>CRUD colis, statuts, événements</td><td>PostgreSQL (asyncpg)</td></tr>
@@ -141,9 +141,67 @@ tracker-front  parcel-api   gps-ingestor    (/, /api, /gps)
     <div class="footer"><span>GreenLogistics</span><span>Architecture</span></div>
   </section>
 
-  <!-- 5 — ADR -->
+  <!-- 5 — DOCKER / CONTENEURISATION -->
   <section class="slide">
-    <h2><span class="num">03</span>Décisions d'architecture (ADR)</h2>
+    <h2><span class="num">04</span>Conteneurisation — Docker</h2>
+    <p>Chaque service est <strong>emballé</strong> avec son langage et ses librairies : il tourne à l'identique en local, en CI et dans le cluster — fin du « ça marche sur ma machine ».</p>
+    <div class="cols" style="margin-top:1.1rem">
+      <div>
+        <ul>
+          <li><strong>Image</strong> = le moule figé · <strong>conteneur</strong> = le moule en exécution</li>
+          <li><strong>Dockerfile</strong> = la recette (1 ligne = 1 couche)</li>
+          <li><strong>Multi-stage</strong> : atelier de build → image finale légère</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Durcissement des images</h3>
+        <ul>
+          <li class="ok"><strong>Non-root</strong> (<code>USER appuser</code>)</li>
+          <li class="ok"><code>HEALTHCHECK</code> intégré</li>
+          <li class="ok">Base <code>slim</code>/<code>alpine</code> — surface d'attaque réduite</li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer"><span>GreenLogistics</span><span>Conteneurisation</span></div>
+  </section>
+
+  <!-- 6 — KUBERNETES / ORCHESTRATION -->
+  <section class="slide">
+    <h2><span class="num">05</span>Orchestration — Kubernetes</h2>
+    <p><strong>Modèle déclaratif</strong> : on décrit l'état voulu, Kubernetes le maintient en permanence (<strong>self-healing</strong>) sur le cluster kind (3 nœuds).</p>
+    <div class="cols3" style="margin-top:1.2rem">
+      <div class="card"><h3>Deployment</h3><p class="sub">garde N répliques vivantes de l'image</p></div>
+      <div class="card"><h3>Service</h3><p class="sub">adresse DNS fixe + load-balancer devant les Pods</p></div>
+      <div class="card"><h3>Probes</h3><p class="sub"><em>readiness</em> = prêt au trafic · <em>liveness</em> = à redémarrer</p></div>
+    </div>
+    <p class="sub" style="margin-top:1.2rem">🔗 Objets reliés par <strong>labels</strong> (<code>app: parcel-api</code>), jamais par des flèches. Les <code>requests/limits</code> CPU/RAM servent de base au <strong>HPA</strong>.</p>
+    <div class="footer"><span>GreenLogistics</span><span>Orchestration</span></div>
+  </section>
+
+  <!-- 7 — TERRAFORM / PLATEFORME -->
+  <section class="slide">
+    <h2><span class="num">06</span>Plateforme en code — Terraform (IaC)</h2>
+    <p>Toute la plateforme (ArgoCD, Prometheus, Vault, Redpanda…) est <strong>provisionnée par code</strong>, reproductible en une commande. Cycle <code>init → plan → apply</code>.</p>
+    <div class="cols" style="margin-top:1.1rem">
+      <div>
+        <ul>
+          <li><code>helm_release</code> = installe un chart (ArgoCD, kube-prometheus-stack…)</li>
+          <li><code>module namespace-rbac</code> = namespaces + ServiceAccount + RBAC</li>
+          <li><code>.tfstate</code> = la mémoire de l'infra (backend local)</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Terraform vs ArgoCD</h3>
+        <p class="sub"><strong>Terraform</strong> pose les fondations — et installe ArgoCD lui-même.</p>
+        <p class="sub" style="margin-top:.6rem"><strong>ArgoCD</strong> déploie ensuite l'application en continu (GitOps).</p>
+      </div>
+    </div>
+    <div class="footer"><span>GreenLogistics</span><span>IaC · plateforme</span></div>
+  </section>
+
+  <!-- 8 — ADR -->
+  <section class="slide">
+    <h2><span class="num">07</span>Décisions d'architecture (ADR)</h2>
     <table>
       <tr><th>ADR</th><th>Décision</th><th>Raison clé</th></tr>
       <tr><td>001</td><td><strong>Redpanda</strong> comme broker</td><td>API Kafka, sans ZooKeeper, plus léger</td></tr>
@@ -155,10 +213,11 @@ tracker-front  parcel-api   gps-ingestor    (/, /api, /gps)
     <div class="footer"><span>GreenLogistics</span><span>ADR.md</span></div>
   </section>
 
-  <!-- 6 — CI/CD -->
+  <!-- 9 — CI/CD -->
   <section class="slide">
-    <h2><span class="num">04</span>CI/CD sécurisé — pull-based</h2>
-    <div class="cols">
+    <h2><span class="num">08</span>CI/CD sécurisé — pull-based</h2>
+    <p class="sub">Le principe : à chaque <code>push</code>, un robot teste, construit et scanne les images — puis met à jour le déploiement. La CI ne touche jamais au cluster.</p>
+    <div class="cols" style="margin-top:.8rem">
       <div>
         <h3>GitHub Actions (matrice ×4)</h3>
         <ul>
@@ -177,36 +236,39 @@ tracker-front  parcel-api   gps-ingestor    (/, /api, /gps)
         </ul>
       </div>
     </div>
-    <div class="flow" style="margin-top:1.4rem">push ─▶ CI (test/build/scan) ─▶ commit tag SHA ─▶ ArgoCD sync ─▶ cluster</div>
+    <div class="flow" style="margin-top:1.2rem">push ─▶ CI (test/build/scan) ─▶ commit tag SHA ─▶ ArgoCD sync ─▶ cluster</div>
     <div class="footer"><span>GreenLogistics</span><span>Blocs 4.4 / 4.5</span></div>
   </section>
 
-  <!-- 7 — GITOPS -->
+  <!-- 10 — GITOPS -->
   <section class="slide">
-    <h2><span class="num">05</span>GitOps — App of Apps</h2>
-    <div class="cols">
+    <h2><span class="num">09</span>GitOps — App of Apps</h2>
+    <p class="sub">Git est la <strong>seule source de vérité</strong> : ArgoCD compare Git ↔ cluster en boucle et corrige (<strong>selfHeal</strong>, <strong>prune</strong>). Zéro <code>kubectl apply</code> manuel.</p>
+    <div class="cols" style="margin-top:.8rem">
       <div>
-        <p>La racine <code>greenlogistics</code> déploie 6 Applications enfants :</p>
+        <p>La racine <code>greenlogistics</code> déploie 7 Applications enfants :</p>
         <ul>
           <li><code>infra</code> (Vault, ESO, netpol…)</li>
           <li><code>parcel-api</code> · <code>gps-ingestor</code></li>
           <li><code>notifier</code> · <code>tracker-front</code></li>
           <li><code>monitoring</code> (SLO, dashboard, alerte)</li>
+          <li><code>seed</code> (données de démo)</li>
         </ul>
       </div>
       <div class="card">
         <h3>Déploiement progressif</h3>
         <p class="sub"><strong>Self-Heal</strong> + <strong>prune</strong> activés → démo live : scale à 0 → resync auto (~90 s).</p>
-        <p class="sub" style="margin-top:.8rem"><strong>Canary</strong> : <code>parcel-api</code> en Argo Rollouts, montée en charge progressive.</p>
+        <p class="sub" style="margin-top:.8rem"><strong>Canary</strong> : <code>parcel-api</code> en Argo Rollouts, montée en charge progressive + rollback auto sur métriques.</p>
       </div>
     </div>
     <div class="footer"><span>GreenLogistics</span><span>Bloc 4.5</span></div>
   </section>
 
-  <!-- 8 — OBSERVABILITÉ -->
+  <!-- 11 — OBSERVABILITÉ -->
   <section class="slide">
-    <h2><span class="num">06</span>Observabilité & SRE</h2>
-    <div class="cols">
+    <h2><span class="num">10</span>Observabilité & SRE</h2>
+    <p class="sub">Les services exposent <code>/metrics</code> → Prometheus collecte → Grafana affiche → Alertmanager alerte (MailHog). Objectifs de qualité mesurés par des <strong>SLO</strong>.</p>
+    <div class="cols" style="margin-top:.6rem">
       <div>
         <ul>
           <li class="ok">kube-prometheus-stack (Prom + Grafana + Alertmanager)</li>
@@ -233,9 +295,9 @@ tracker-front  parcel-api   gps-ingestor    (/, /api, /gps)
     <div class="footer"><span>GreenLogistics</span><span>Bloc 4.6</span></div>
   </section>
 
-  <!-- 9 — SÉCURITÉ + FINOPS -->
+  <!-- 12 — SÉCURITÉ + FINOPS -->
   <section class="slide">
-    <h2><span class="num">07</span>Sécurité (DevSecOps) & FinOps</h2>
+    <h2><span class="num">11</span>Sécurité (DevSecOps) & FinOps</h2>
     <div class="cols">
       <div>
         <h3>Sécurité</h3>
@@ -260,7 +322,7 @@ tracker-front  parcel-api   gps-ingestor    (/, /api, /gps)
     <div class="footer"><span>GreenLogistics</span><span>Blocs 4.7 / 4.8</span></div>
   </section>
 
-  <!-- 10 — DÉMO -->
+  <!-- 13 — DÉMO -->
   <section class="slide title-wrap">
     <h1 style="color:var(--accent2)">▶ Démo live</h1>
     <ul class="big" style="margin-top:1rem">
@@ -274,9 +336,9 @@ tracker-front  parcel-api   gps-ingestor    (/, /api, /gps)
     <div class="footer"><span>GreenLogistics</span><span>10 min</span></div>
   </section>
 
-  <!-- 11 — RETEX incidents -->
+  <!-- 14 — RETEX incidents -->
   <section class="slide">
-    <h2><span class="num">08</span>Retour d'expérience — incidents résolus</h2>
+    <h2><span class="num">12</span>Retour d'expérience — incidents résolus</h2>
     <div class="cols">
       <div class="card">
         <h3>🔴 Prometheus OOMKilled</h3>
@@ -298,11 +360,11 @@ tracker-front  parcel-api   gps-ingestor    (/, /api, /gps)
     <div class="footer"><span>GreenLogistics</span><span>Difficultés</span></div>
   </section>
 
-  <!-- 12 — RÉSULTATS -->
+  <!-- 15 — RÉSULTATS -->
   <section class="slide">
-    <h2><span class="num">09</span>Résultats — état du cluster</h2>
+    <h2><span class="num">13</span>Résultats — état du cluster</h2>
     <ul>
-      <li class="ok"><strong>ArgoCD</strong> : 6 applications <span class="tag">Synced / Healthy</span></li>
+      <li class="ok"><strong>ArgoCD</strong> : 7 applications <span class="tag">Synced / Healthy</span></li>
       <li class="ok"><strong>SLO</strong> parcel-api : erreur 0 %, P95 ≈ 5 ms, Error Budget 100 %</li>
       <li class="ok"><strong>HPA</strong> actifs (parcel-api 2/6, gps-ingestor 2/10)</li>
       <li class="ok"><strong>Prometheus</strong> stable, cibles <code>parcel-api</code> / <code>gps-ingestor</code> <span class="tag">up</span></li>
@@ -312,9 +374,9 @@ tracker-front  parcel-api   gps-ingestor    (/, /api, /gps)
     <div class="footer"><span>GreenLogistics</span><span>Preuves → docs/captures/</span></div>
   </section>
 
-  <!-- 13 — AMÉLIORATIONS -->
+  <!-- 16 — AMÉLIORATIONS -->
   <section class="slide">
-    <h2><span class="num">10</span>Pistes d'amélioration</h2>
+    <h2><span class="num">14</span>Pistes d'amélioration</h2>
     <ul>
       <li>Tags <strong>sémantiques</strong> d'images sur release (<code>vX.Y.Z</code>) en plus du SHA</li>
       <li>Endpoint <code>/metrics</code> sur <code>notifier</code> → SLO de consommation d'événements</li>
@@ -325,12 +387,12 @@ tracker-front  parcel-api   gps-ingestor    (/, /api, /gps)
     <div class="footer"><span>GreenLogistics</span><span>§7 rapport</span></div>
   </section>
 
-  <!-- 14 — MERCI -->
+  <!-- 17 — MERCI -->
   <section class="slide title-wrap">
     <h1>Merci 🌱</h1>
     <p class="big muted">Questions ?</p>
     <div class="stack">
-      <span class="badge">6 apps Synced/Healthy</span>
+      <span class="badge">7 apps Synced/Healthy</span>
       <span class="badge">SLO tenus</span>
       <span class="badge">Alerte vérifiée</span>
       <span class="badge">100 % local & reproductible</span>
