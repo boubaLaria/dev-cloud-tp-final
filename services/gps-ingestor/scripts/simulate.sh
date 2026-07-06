@@ -6,7 +6,7 @@
 PARCEL_ID=${1:?"Usage: $0 <parcelId>"}
 # L'Ingress est exposé par kind sur le port hôte 8080 (containerPort 80 → hostPort 8080).
 INGESTOR_URL="${INGESTOR_URL:-http://greenlogistics.local:8080/gps}"
-INTERVAL=${INTERVAL:-5}
+INTERVAL=${INTERVAL:-0.000000001}
 
 echo "Simulation GPS pour colis: $PARCEL_ID"
 echo "Endpoint: $INGESTOR_URL/positions"

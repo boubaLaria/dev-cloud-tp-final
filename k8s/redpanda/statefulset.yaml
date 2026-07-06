@@ -55,6 +55,11 @@ spec:
             - "256M"
             - --reserve-memory
             - "0M"
+            # Sans ça, le broker s'annonce sur 127.0.0.1:9092 → les clients d'autres
+            # namespaces (gps-ingestor) reçoivent cette adresse et échouent
+            # (« connection refused to node id 0 »). On annonce le DNS du Service.
+            - --advertise-kafka-addr
+            - redpanda.messaging.svc.cluster.local:9092
           ports:
             - containerPort: 9092
               name: kafka
