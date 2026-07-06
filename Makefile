@@ -5,7 +5,8 @@ CLUSTER       := greenlogistics
 CTX           := kind-greenlogistics
 NS            := app
 HOST          := greenlogistics.local
-BASE          := http://$(HOST)
+# L'Ingress est exposé par kind sur le port hôte 8080 (containerPort 80 → hostPort 8080).
+BASE          := http://$(HOST):8080
 PY_SERVICES   := parcel-api gps-ingestor
 NODE_SERVICES := notifier tracker-front
 KUBECTL       := kubectl --context $(CTX)
@@ -15,7 +16,8 @@ SIMULATE      := services/gps-ingestor/scripts/simulate.sh
 .PHONY: help test test-py test-node lint lint-py lint-node \
         cluster-up cluster-down status wait \
         smoke seed seed-clean simulate demo \
-        grafana argocd-ui mailhog logs
+        grafana prometheus alertmanager vault loki argocd-ui mailhog logs \
+        mon-load mon-break mon-errors mon-alerts mon-mail mon-heal mon-status mon-demo
 
 ## ─────────────────────────── Aide ───────────────────────────
 help: ## Affiche cette aide
@@ -107,6 +109,18 @@ demo: ## Démo complète : crée un colis OUT_FOR_DELIVERY + trajet GPS
 grafana: ## Port-forward Grafana → http://localhost:9090 (admin/prom-operator)
 	$(KUBECTL) port-forward -n monitoring svc/kps-grafana 9090:80
 
+prometheus: ## Port-forward Prometheus → http://localhost:9091
+	$(KUBECTL) port-forward -n monitoring svc/kps-kube-prometheus-stack-prometheus 9091:9090
+
+alertmanager: ## Port-forward Alertmanager → http://localhost:9093
+	$(KUBECTL) port-forward -n monitoring svc/kps-kube-prometheus-stack-alertmanager 9093:9093
+
+vault: ## Port-forward Vault → http://localhost:8200 (token: root)
+	$(KUBECTL) port-forward -n vault svc/vault 8200:8200
+
+loki: ## Port-forward Loki → http://localhost:3100 (API ; à consulter via Grafana)
+	$(KUBECTL) port-forward -n monitoring svc/loki 3100:3100
+
 argocd-ui: ## Port-forward ArgoCD → https://localhost:8080
 	$(KUBECTL) port-forward -n argocd svc/argocd-server 8080:443
 
@@ -116,3 +130,30 @@ mailhog: ## Port-forward MailHog → http://localhost:8025
 logs: ## Logs d'un service — usage : make logs SVC=parcel-api
 	@test -n "$(SVC)" || { echo "Usage: make logs SVC=<service>"; exit 1; }
 	$(KUBECTL) logs -n $(NS) -l app=$(SVC) --tail=100 -f
+
+## ────────────── Test observabilité / alerting ───────────────
+MON := bash scripts/monitoring-test.sh
+
+mon-load: ## Trafic sain (baseline SLO) — usage : make mon-load [SECS=30]
+	$(MON) load $(SECS)
+
+mon-break: ## Coupe PostgreSQL + envoie du trafic → 5xx — usage : make mon-break [REQ=150]
+	$(MON) break $(REQ)
+
+mon-errors: ## Taux d'erreur SLO + état de l'alerte (Prometheus)
+	$(MON) errors
+
+mon-alerts: ## Alertes actives (Alertmanager)
+	$(MON) alerts
+
+mon-mail: ## Mails d'alerte reçus (MailHog)
+	$(MON) mail
+
+mon-heal: ## Répare PostgreSQL + réactive l'auto-sync ArgoCD
+	$(MON) heal
+
+mon-status: ## Vue d'ensemble monitoring (targets, SLO, alertes, mails)
+	$(MON) status
+
+mon-demo: ## Scénario complet : baseline → panne → alerte → mail → réparation
+	$(MON) demo $(SECS)
