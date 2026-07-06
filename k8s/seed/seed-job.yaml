@@ -1,0 +1,95 @@
+---
+# Job de seed démo : crée quelques colis + trajets GPS pour que le front
+# et les dashboards Grafana ne soient jamais vides après un déploiement.
+# Idempotent : ne fait rien si des colis existent déjà.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: demo-seed
+  namespace: app
+  labels:
+    app: demo-seed
+    team: greenlogistics
+  annotations:
+    # Sync en dernier dans la vague ArgoCD (le script attend quand même la santé des services)
+    argocd.argoproj.io/sync-wave: "10"
+spec:
+  backoffLimit: 5
+  ttlSecondsAfterFinished: 86400
+  template:
+    metadata:
+      labels:
+        app: demo-seed
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: seed
+          image: alpine:3.20
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -eu
+              apk add --no-cache curl jq >/dev/null
+
+              API="http://parcel-api.app.svc.cluster.local:3000"
+              GPS="http://gps-ingestor.app.svc.cluster.local:3001"
+
+              echo "⏳ Attente de parcel-api et gps-ingestor..."
+              for i in $(seq 1 60); do
+                if curl -sf "$API/health" >/dev/null 2>&1 && curl -sf "$GPS/health" >/dev/null 2>&1; then
+                  echo "✅ Services prêts."
+                  break
+                fi
+                sleep 2
+              done
+
+              # Idempotence : si des colis existent déjà, ne pas re-seeder
+              existing=$(curl -sf "$API/parcels" 2>/dev/null | jq 'length' 2>/dev/null || echo 0)
+              if [ "${existing:-0}" -gt 0 ]; then
+                echo "ℹ️  $existing colis déjà présents — seed ignoré."
+                exit 0
+              fi
+
+              # 3 colis : sender | recipient | email | adresse | lat_dest | lng_dest | statut_final
+              SEED="Entrepôt Nord|Alice Martin|alice@example.com|Opéra, 75009 Paris|48.8709|2.3317|OUT_FOR_DELIVERY
+              Entrepôt Sud|Bob Dupont|bob@example.com|Bastille, 75011 Paris|48.8532|2.3692|IN_TRANSIT
+              Entrepôt Est|Chloé Bernard|chloe@example.com|Montmartre, 75018 Paris|48.8867|2.3431|PENDING"
+
+              echo "$SEED" | while IFS='|' read -r sender recipient email addr lat lng status; do
+                [ -z "$recipient" ] && continue
+                resp=$(curl -sf -X POST "$API/parcels" \
+                  -H 'Content-Type: application/json' \
+                  -d "{\"senderName\":\"$sender\",\"recipientName\":\"$recipient\",\"recipientEmail\":\"$email\",\"recipientAddress\":\"$addr\",\"recipientLat\":$lat,\"recipientLng\":$lng}")
+                id=$(echo "$resp" | jq -r '.id')
+                code=$(echo "$resp" | jq -r '.tracking_code')
+                echo "📦 Colis créé : $code ($recipient) — $id"
+
+                # Trajet GPS : 4 points qui convergent vers la destination
+                dlat=$(awk "BEGIN{print $lat-0.03}")
+                dlng=$(awk "BEGIN{print $lng-0.02}")
+                for step in 1 2 3 4; do
+                  plat=$(awk "BEGIN{print $dlat + ($lat-$dlat)*$step/4}")
+                  plng=$(awk "BEGIN{print $dlng + ($lng-$dlng)*$step/4}")
+                  curl -sf -X POST "$GPS/positions" \
+                    -H 'Content-Type: application/json' \
+                    -d "{\"parcelId\":\"$id\",\"latitude\":$plat,\"longitude\":$plng}" >/dev/null \
+                    && echo "   📍 point $step/4 → $plat,$plng"
+                done
+
+                # Statut (variété sur le dashboard) — PENDING = état initial, on ne patch pas
+                if [ "$status" != "PENDING" ]; then
+                  curl -sf -X PATCH "$API/parcels/$id/status" \
+                    -H 'Content-Type: application/json' \
+                    -d "{\"status\":\"$status\"}" >/dev/null \
+                    && echo "   🔄 statut → $status"
+                fi
+              done
+
+              echo "✅ Seed terminé."
